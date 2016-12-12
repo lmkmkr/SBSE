@@ -52,9 +52,9 @@ while os.path.exists(name) :
 
 f = open(name,'w')
 for commit in commits:
-    timeLine = str(int(commit[0].timestamp()))+"\n"
+    timeLine = "Date:"+str(int(commit[0].timestamp()))+"\n"
     f.write(timeLine)
-    f.write(commit[1]+"\n")
+    f.write("Author:"+commit[1]+"\n")
     for file in commit[2]:
         f.write(file+"\n")
     f.write("\n")
