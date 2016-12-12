@@ -3,6 +3,7 @@
 from datetime import datetime
 import random
 import math
+import sys
 
 
 ##makefile list with lexicographical order
@@ -20,6 +21,12 @@ def constructFileList(commits):
     ret = list(fileList)
     ret.sort()
     return ret
+
+def constructDictionary(flist):
+    dictionary = dict()
+    for i in range(len(flist)):
+        dictionary[flist[i]] = i
+    return dictionary
 
 def constructFileNameList(flist):
     fileNameList = list()
@@ -48,6 +55,7 @@ def totRank(history,fsystem,fnlist,rankFunc = None, putFirstChar = False):
         frequency = [0]*len(fsystem)
     totRank = 0
     totTry = 0
+    totOne = 0
     for log in history:
         route = []
         idx = log
@@ -64,7 +72,7 @@ def totRank(history,fsystem,fnlist,rankFunc = None, putFirstChar = False):
                 firstchar = fnlist[didx][0]
                 Files = list(filter(lambda x,fn = fnlist,char = firstchar: (fnlist[x][0] == char),Files))
             if len(Files) <= 1:
-                continue
+                totOne += 1
             sortedFiles = []
             if rankFunc is None:
                 sortedFiles = Files
@@ -75,29 +83,32 @@ def totRank(history,fsystem,fnlist,rankFunc = None, putFirstChar = False):
                 sortedFiles = antLikeRanking(Files,fsystem,frequency)
                 frequency[didx] += 10
             totTry += 1
-            totRank += sortedFiles.index(didx)+1
+            if rankFunc == 4 :
+                totRank += len(Files)
+            else:
+                totRank += sortedFiles.index(didx)+1
     if (rankFunc == 1) | (rankFunc == 2):
         frequency.sort(reverse=True)
-        print(frequency[0])
-    return (totTry,totRank)
+        print(frequency[0]," ",frequency[1]," ",frequency[2]," ",frequency[3]," ",frequency[4])
+    return (totTry,totRank,totOne)
                 
-def constructRandomHistory(commits,flist):
+def constructRandomHistory(commits,dictionary):
     random.seed()
     history = []
     for commit in commits:
         temp = list(commit[2])
         for i in range(len(commit[2]),0,-1):
             name = "root/"+temp.pop(random.randrange(i))
-            history.append(flist.index(name))
+            history.append(dictionary[name])
     return history
 
-def constructHistory(commits,flist):
+def constructHistory(commits,dictionary):
     random.seed()
     history = []
     for commit in commits:
         for file in commit[2]:
             name = "root/"+file
-            history.append(flist.index(name))
+            history.append(dictionary[name])
     return history
 
 def calculateFrequency(history,fsystem,flist):
@@ -129,7 +140,7 @@ def antLikeRanking(files,fsystem,pheromone):
     return list(map(lambda s:s[1],freq))
 
 evaRate = 1
-f = open("Ant/AntLog_rand0")
+f = open(sys.argv[1],encoding='UTF8')
 commits = []
 i = 0
 
@@ -142,8 +153,8 @@ while True:
     line = f.readline()
     if line == "\n": continue
     if not line: break
-    date = int(line[:-1])
-    name = f.readline()[:-1]
+    date = int(line[5:-1])
+    name = f.readline()[7:-1]
     files = []
     ##print("srcs")
     while True :
@@ -159,52 +170,21 @@ print("construct file name list")
 fileNameList = constructFileNameList(fileList)
 print("construct file system")
 fileSystem = constructFileSystem(fileList)
-totFiles = 0
-totFolder = 0
-for files in fileSystem:
-    if len(files) > 2 :
-        totFolder += 1
-        totFiles+=len(files)-1
-print("avgFiles",totFiles/totFolder)
-frequency = [0 for _ in range(len(fileList))]
 
 print("make a history")
-##randHistory = constructRandomHistory(commits,fileList)
-history = constructHistory(commits,fileList)
-##cal = calculateFrequency(history,fileSystem,fileList)
-##
-print("calculate total sum of ranks using default")
-simpleTotRank = totRank(history,fileSystem,fileNameList)
-print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0],"\n")
-print("calculate total sum of ranks using default with first char")
-simpleTotRank = totRank(history,fileSystem,fileNameList,putFirstChar = True)
-print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0],"\n")
 
-print("calculate total sum of ranks using frequency")
-simpleTotRank = totRank(history,fileSystem,fileNameList,1)
-print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0],"\n")
+dictionary = constructDictionary(fileList)
+history = constructHistory(commits,dictionary)
+f = open(sys.argv[1]+"_rs",'w',encoding='UTF8')
+for i in range(0,101):
+    evaRate = i/100
+    print(i)
+    ##print("calculate total sum of ranks using pheromone evaRate: ",evaRate)
+    simpleTotRank = totRank(history,fileSystem,fileNameList,2,True)
+    string = str(evaRate)+" "+str(simpleTotRank[1]/simpleTotRank[0])+" "+str((simpleTotRank[1]+simpleTotRank[2])/(simpleTotRank[0]+simpleTotRank[2]))+"\n"
+    f.write(string)
 
-print("calculate total sum of ranks using frequency with first char")
-simpleTotRank = totRank(history,fileSystem,fileNameList,1,putFirstChar = True)
-print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0],"\n")
-
-for i in range(10):
-    evaRate -= 0.0001
-    print("calculate total sum of ranks using pheromone evaRate: ",evaRate)
-    simpleTotRank = totRank(history,fileSystem,fileNameList,2)
-    print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0])
-    print("calculate total sum of ranks using pheromone with first char evaRate: ",evaRate)
-    simpleTotRank = totRank(history,fileSystem,fileNameList,2,putFirstChar = True)
-    print("totTry: ",simpleTotRank[0],
-      "totRank",simpleTotRank[1]," avg: ",simpleTotRank[1]/simpleTotRank[0])
-    
-
-
+f.close()
 ##print(averageRank(g,fileSystem))
     
 

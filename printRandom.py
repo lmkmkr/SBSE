@@ -7,7 +7,7 @@ import random
 from datetime import datetime
 
 inputFile = sys.argv[1]
-f = open(inputFile)
+f = open(inputFile,encoding='UTF8')
 commits = []
 
 ## construct log list
@@ -50,7 +50,7 @@ while os.path.exists(name) :
     i += 1
     name = inputFile+"_rand"+str(i)
 
-f = open(name,'w')
+f = open(name,'w',encoding='UTF8')
 for commit in commits:
     timeLine = "Date:"+str(int(commit[0].timestamp()))+"\n"
     f.write(timeLine)
